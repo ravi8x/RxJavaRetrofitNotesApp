@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingLeft="@dimen/activity_margin"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:paddingRight="@dimen/activity_margin">
+
+    <TextView
+        android:id="@+id/dot"
+        android:layout_width="wrap_content"
+        android:layout_height="30dp"
+        android:layout_marginRight="@dimen/dot_margin_right"
+        android:layout_marginTop="10dp"
+        android:includeFontPadding="false"
+        android:lineSpacingExtra="0dp"
+        android:textSize="40sp" />
+
+    <TextView
+        android:id="@+id/timestamp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@id/dot"
+        android:text="22 Dec"
+        android:textColor="#858585"
+        android:textSize="14sp" />
+
+    <TextView
+        android:id="@+id/note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/timestamp"
+        android:layout_toRightOf="@id/dot"
+        android:textColor="#232323"
+        android:textSize="18sp" />
+
+</RelativeLayout>

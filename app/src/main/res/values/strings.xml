@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">RxJava Retrofit</string>
+    <string name="action_settings">Settings</string>
+    <string name="activity_title_home">Notes</string>
+</resources>

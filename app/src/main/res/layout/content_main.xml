@@ -18,10 +18,10 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="120dp"
+        android:layout_marginTop="@dimen/margin_top_no_notes"
         android:fontFamily="sans-serif-light"
-        android:text="No notes found!"
-        android:textColor="#999"
-        android:textSize="26sp" />
+        android:text="@string/msg_no_notes"
+        android:textColor="@color/msg_no_notes"
+        android:textSize="@dimen/msg_no_notes" />
 
 </RelativeLayout>

@@ -3,4 +3,8 @@
     <color name="colorPrimary">#111</color>
     <color name="colorPrimaryDark">#FFF</color>
     <color name="colorAccent">#36D3B2</color>
+    <color name="msg_no_notes">#999</color>
+    <color name="hint_enter_note">#89c3c3c3</color>
+    <color name="timestamp">#858585</color>
+    <color name="note_list_text">#232323</color>
 </resources>

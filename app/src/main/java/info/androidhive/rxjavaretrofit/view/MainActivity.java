@@ -4,7 +4,9 @@ import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -49,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
     private NotesAdapter mAdapter;
     private List<Note> notesList = new ArrayList<>();
 
+    @BindView(R.id.coordinator_layout)
+    CoordinatorLayout coordinatorLayout;
+
     @BindView(R.id.recycler_view)
     RecyclerView recyclerView;
 
@@ -85,7 +90,11 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.addItemDecoration(new MyDividerItemDecoration(this, LinearLayoutManager.VERTICAL, 16));
         recyclerView.setAdapter(mAdapter);
 
-        // long press
+        /**
+         * On long press on RecyclerView item, open alert dialog
+         * with options to choose
+         * Edit and Delete
+         * */
         recyclerView.addOnItemTouchListener(new RecyclerTouchListener(this,
                 recyclerView, new RecyclerTouchListener.ClickListener() {
             @Override
@@ -101,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
         /**
          * Check for stored Api Key in shared preferences
          * If not present, make api call to register the user
+         * This will be executed when app is installed for the first time
+         * or data is cleared from settings
          * */
         if (TextUtils.isEmpty(PrefUtils.getApiKey(this))) {
             registerUser();
@@ -131,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
                                 PrefUtils.storeApiKey(getApplicationContext(), user.getApiKey());
 
                                 Toast.makeText(getApplicationContext(),
-                                        "Device is registered successfully! Api key: " + PrefUtils.getApiKey(getApplicationContext()),
+                                        "Device is registered successfully! ApiKey: " + PrefUtils.getApiKey(getApplicationContext()),
                                         Toast.LENGTH_LONG).show();
                             }
 
@@ -142,6 +153,149 @@ public class MainActivity extends AppCompatActivity {
                         }));
     }
 
+    /**
+     * Fetching all notes from api
+     * The received items will be in random order
+     * map() operator is used to sort the items in descending order by Id
+     */
+    private void fetchAllNotes() {
+        disposable.add(
+                apiService.fetchAllNotes()
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .map(new Function<List<Note>, List<Note>>() {
+                            @Override
+                            public List<Note> apply(List<Note> notes) throws Exception {
+                                // TODO - note about sort
+                                Collections.sort(notes, new Comparator<Note>() {
+                                    @Override
+                                    public int compare(Note n1, Note n2) {
+                                        return n2.getId() - n1.getId();
+                                    }
+                                });
+                                return notes;
+                            }
+                        })
+                        .subscribeWith(new DisposableSingleObserver<List<Note>>() {
+                            @Override
+                            public void onSuccess(List<Note> notes) {
+                                notesList.clear();
+                                notesList.addAll(notes);
+                                mAdapter.notifyDataSetChanged();
+
+                                toggleEmptyNotes();
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                Log.e(TAG, "onError: " + e.getMessage());
+                                showError(e);
+                            }
+                        })
+        );
+    }
+
+    /**
+     * Creating new note
+     */
+    private void createNote(String note) {
+        disposable.add(
+                apiService.createNote(note)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(new DisposableSingleObserver<Note>() {
+
+                            @Override
+                            public void onSuccess(Note note) {
+                                if (!TextUtils.isEmpty(note.getError())) {
+                                    Toast.makeText(getApplicationContext(), note.getError(), Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+
+                                Log.d(TAG, "new note created: " + note.getId() + ", " + note.getNote() + ", " + note.getTimestamp());
+
+                                // Add new item and notify adapter
+                                notesList.add(0, note);
+                                mAdapter.notifyDataSetChanged();
+
+                                toggleEmptyNotes();
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                Log.e(TAG, "onError: " + e.getMessage());
+                                showError(e);
+                            }
+                        }));
+    }
+
+    /**
+     * Updating a note
+     */
+    private void updateNote(int noteId, final String note, final int position) {
+        disposable.add(
+                apiService.updateNote(noteId, note)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(new DisposableCompletableObserver() {
+                            @Override
+                            public void onComplete() {
+                                Log.d(TAG, "Note updated!");
+
+                                Note n = notesList.get(position);
+                                n.setNote(note);
+
+                                // Update item and notify adapter
+                                notesList.set(position, n);
+                                mAdapter.notifyItemChanged(position);
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                Log.e(TAG, "onError: " + e.getMessage());
+                                showError(e);
+                            }
+                        }));
+    }
+
+    /**
+     * Deleting a note
+     */
+    private void deleteNote(final int noteId, final int position) {
+        Log.e(TAG, "deleteNote: " + noteId + ", " + position);
+        disposable.add(
+                apiService.deleteNote(noteId)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(new DisposableCompletableObserver() {
+                            @Override
+                            public void onComplete() {
+                                Log.d(TAG, "Note deleted! " + noteId);
+
+                                // Remove and notify adapter about item deletion
+                                notesList.remove(position);
+                                mAdapter.notifyItemRemoved(position);
+
+                                Toast.makeText(MainActivity.this, "Note deleted!", Toast.LENGTH_SHORT).show();
+
+                                toggleEmptyNotes();
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                Log.e(TAG, "onError: " + e.getMessage());
+                                showError(e);
+                            }
+                        })
+        );
+    }
+
+    /**
+     * Shows alert dialog with EditText options to enter / edit
+     * a note.
+     * when shouldUpdate=true, it automatically displays old note and changes the
+     * button text to UPDATE
+     */
     private void showNoteDialog(final boolean shouldUpdate, final Note note, final int position) {
         LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
         View view = layoutInflaterAndroid.inflate(R.layout.note_dialog, null);
@@ -174,6 +328,7 @@ public class MainActivity extends AppCompatActivity {
         alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Show toast message when no text is entered
                 if (TextUtils.isEmpty(inputNote.getText().toString())) {
                     Toast.makeText(MainActivity.this, "Enter note!", Toast.LENGTH_SHORT).show();
                     return;
@@ -193,6 +348,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Opens dialog with Edit - Delete options
+     * Edit - 0
+     * Delete - 0
+     */
     private void showActionsDialog(final int position) {
         CharSequence colors[] = new CharSequence[]{"Edit", "Delete"};
 
@@ -211,99 +371,6 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
-    private void deleteNote(final int noteId, final int position) {
-        Log.e(TAG, "deleteNote: " + noteId + ", " + position);
-        disposable.add(
-                apiService.deleteNote(noteId)
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribeWith(new DisposableCompletableObserver() {
-                            @Override
-                            public void onComplete() {
-                                Log.d(TAG, "Note deleted! " + noteId);
-
-                                notesList.remove(position);
-                                mAdapter.notifyItemRemoved(position);
-
-                                Toast.makeText(MainActivity.this, "Note deleted!", Toast.LENGTH_SHORT).show();
-
-                                toggleEmptyNotes();
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-
-                            }
-                        })
-        );
-    }
-
-    private void updateNote(int noteId, final String note, final int position) {
-        disposable.add(
-                apiService.updateNote(noteId, note)
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribeWith(new DisposableCompletableObserver() {
-                            @Override
-                            public void onComplete() {
-                                Log.d(TAG, "Note updated!");
-
-                                Note n = notesList.get(position);
-                                n.setNote(note);
-
-                                notesList.set(position, n);
-                                mAdapter.notifyItemChanged(position);
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-
-                            }
-                        }));
-    }
-
-    private void fetchAllNotes() {
-        disposable.add(
-                apiService.fetchAllNotes()
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .map(new Function<List<Note>, List<Note>>() {
-                            @Override
-                            public List<Note> apply(List<Note> notes) throws Exception {
-                                // TODO - note about sort
-                                Collections.sort(notes, new Comparator<Note>() {
-                                    @Override
-                                    public int compare(Note n1, Note n2) {
-                                        return n2.getId() - n1.getId();
-                                    }
-                                });
-                                return notes;
-                            }
-                        })
-                        .subscribeWith(new DisposableSingleObserver<List<Note>>() {
-                            @Override
-                            public void onSuccess(List<Note> notes) {
-
-                                // TODO - remove loop
-                                for (Note note : notes) {
-                                    Log.e(TAG, "Note: " + note.getId() + ", " + note.getNote() + ", " + note.getTimestamp());
-                                }
-
-                                notesList.clear();
-                                notesList.addAll(notes);
-                                mAdapter.notifyDataSetChanged();
-
-                                toggleEmptyNotes();
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                // TODO - handle all error cases
-                            }
-                        })
-        );
-    }
-
     private void toggleEmptyNotes() {
         if (notesList.size() > 0) {
             noNotesView.setVisibility(View.GONE);
@@ -312,33 +379,18 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void createNote(String note) {
-        Log.e(TAG, "createNote: " + note);
-        disposable.add(
-                apiService.createNote(note)
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribeWith(new DisposableSingleObserver<Note>() {
+    /**
+     * Showing a Snackbar with error message
+     */
+    private void showError(Throwable e) {
+        Snackbar snackbar = Snackbar
+                .make(coordinatorLayout, "No internet connection!", Snackbar.LENGTH_LONG);
 
-                            @Override
-                            public void onSuccess(Note note) {
-                                if (!TextUtils.isEmpty(note.getError())) {
-                                    Toast.makeText(getApplicationContext(), note.getError(), Toast.LENGTH_LONG).show();
-                                    return;
-                                }
-
-                                Log.d(TAG, "new note created: " + note.getId() + ", " + note.getNote() + ", " + note.getTimestamp());
-                                notesList.add(0, note);
-                                mAdapter.notifyDataSetChanged();
-
-                                toggleEmptyNotes();
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                Log.e(TAG, "onError: " + e.getMessage());
-                            }
-                        }));
+        // Changing action button text color
+        View sbView = snackbar.getView();
+        TextView textView = (TextView) sbView.findViewById(android.support.design.R.id.snackbar_text);
+        textView.setTextColor(Color.RED);
+        snackbar.show();
     }
 
     private void whiteNotificationBar(View view) {

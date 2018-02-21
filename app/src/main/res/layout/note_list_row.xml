@@ -2,30 +2,30 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingBottom="10dp"
-    android:paddingLeft="@dimen/activity_margin"
-    android:paddingRight="@dimen/activity_margin"
     android:clickable="true"
     android:foreground="?attr/selectableItemBackground"
-    android:paddingTop="10dp">
+    android:paddingBottom="@dimen/dimen_10"
+    android:paddingLeft="@dimen/activity_margin"
+    android:paddingRight="@dimen/activity_margin"
+    android:paddingTop="@dimen/dimen_10">
 
     <TextView
         android:id="@+id/dot"
         android:layout_width="wrap_content"
-        android:layout_height="30dp"
+        android:layout_height="@dimen/dot_height"
         android:layout_marginRight="@dimen/dot_margin_right"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="@dimen/dimen_10"
         android:includeFontPadding="false"
         android:lineSpacingExtra="0dp"
-        android:textSize="40sp" />
+        android:textSize="@dimen/dot_text_size" />
 
     <TextView
         android:id="@+id/timestamp"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_toRightOf="@id/dot"
-        android:textColor="#858585"
-        android:textSize="14sp" />
+        android:textColor="@color/timestamp"
+        android:textSize="@dimen/timestamp" />
 
     <TextView
         android:id="@+id/note"
@@ -33,7 +33,7 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/timestamp"
         android:layout_toRightOf="@id/dot"
-        android:textColor="#232323"
-        android:textSize="18sp" />
+        android:textColor="@color/note_list_text"
+        android:textSize="@dimen/note_list_text" />
 
 </RelativeLayout>

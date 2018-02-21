@@ -65,8 +65,14 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
         Note note = notesList.get(position);
 
         holder.note.setText(note.getNote());
+
+        // Displaying dot from HTML character code
         holder.dot.setText(Html.fromHtml("&#8226;"));
+
+        // Changing dot color to random color
         holder.dot.setTextColor(getRandomMaterialColor("400"));
+
+        // Formatting and displaying timestamp
         holder.timestamp.setText(formatDate(note.getTimestamp()));
     }
 
@@ -75,6 +81,9 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
         return notesList.size();
     }
 
+    /**
+     * Chooses random color defined in res/array.xml
+     */
     private int getRandomMaterialColor(String typeColor) {
         int returnColor = Color.GRAY;
         int arrayId = context.getResources().getIdentifier("mdcolor_" + typeColor, "array", context.getPackageName());
@@ -88,6 +97,11 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
         return returnColor;
     }
 
+    /**
+     * Formatting timestamp to `MMM d` format
+     * Input: 2018-02-21 00:15:42
+     * Output: Feb 21
+     */
     private String formatDate(String dateStr) {
         try {
             SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");

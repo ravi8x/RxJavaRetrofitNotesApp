@@ -10,24 +10,24 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/dimen_10"
         android:fontFamily="sans-serif-medium"
         android:lineSpacingExtra="8sp"
-        android:text="New Note"
-        android:layout_marginBottom="10dp"
+        android:text="@string/lbl_new_note_title"
         android:textColor="@color/colorAccent"
-        android:textSize="20sp"
+        android:textSize="@dimen/lbl_new_note_title"
         android:textStyle="normal" />
 
     <EditText
         android:id="@+id/note"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="top"
-        android:textSize="20sp"
         android:background="@android:color/transparent"
-        android:hint="Enter your note!"
-        android:lines="4"
+        android:gravity="top"
+        android:hint="@string/hint_enter_note"
         android:inputType="textCapSentences|textMultiLine"
-        android:textColorHint="#89c3c3c3" />
+        android:lines="4"
+        android:textColorHint="@color/hint_enter_note"
+        android:textSize="@dimen/input_new_note" />
 
 </LinearLayout>

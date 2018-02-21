@@ -27,7 +27,6 @@ import retrofit2.converter.gson.GsonConverterFactory;
  */
 
 public class ApiClient {
-    private static String TAG = ApiClient.class.getSimpleName();
     private static Retrofit retrofit = null;
     private static int REQUEST_TIMEOUT = 60;
     private static OkHttpClient okHttpClient;
@@ -49,18 +48,8 @@ public class ApiClient {
     }
 
     private static void initOkHttp(final Context context) {
-        ConnectionSpec spec = new
-                ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
-                .tlsVersions(TlsVersion.TLS_1_2)
-                .cipherSuites(
-                        CipherSuite.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-                        CipherSuite.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-                        CipherSuite.TLS_DHE_RSA_WITH_AES_128_GCM_SHA256)
-                .build();
-
         OkHttpClient.Builder httpClient = new OkHttpClient().newBuilder()
                 .connectTimeout(REQUEST_TIMEOUT, TimeUnit.SECONDS)
-                .connectionSpecs(Collections.singletonList(spec))
                 .readTimeout(REQUEST_TIMEOUT, TimeUnit.SECONDS)
                 .writeTimeout(REQUEST_TIMEOUT, TimeUnit.SECONDS);
 
@@ -75,10 +64,10 @@ public class ApiClient {
                 Request original = chain.request();
                 Request.Builder requestBuilder = original.newBuilder()
                         .addHeader("Accept", "application/json")
-                        .addHeader("Request-Type", "Android")
                         .addHeader("Content-Type", "application/json");
 
-                // adding Authorization token
+                // Adding Authorization token (API Key)
+                // Requests will be denied without API key
                 if (!TextUtils.isEmpty(PrefUtils.getApiKey(context))) {
                     requestBuilder.addHeader("Authorization", PrefUtils.getApiKey(context));
                 }
@@ -89,10 +78,5 @@ public class ApiClient {
         });
 
         okHttpClient = httpClient.build();
-    }
-
-    public static void resetApiClient() {
-        retrofit = null;
-        okHttpClient = null;
     }
 }

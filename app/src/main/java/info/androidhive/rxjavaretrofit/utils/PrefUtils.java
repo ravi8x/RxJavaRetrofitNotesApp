@@ -3,19 +3,15 @@ package info.androidhive.rxjavaretrofit.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.jakewharton.retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
-
-import info.androidhive.rxjavaretrofit.app.Const;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-
 /**
  * Created by ravi on 20/02/18.
  */
 
 public class PrefUtils {
-    private SharedPreferences pref;
-
+    /**
+     * Storing API Key in shared preferences to
+     * add it in header part of every retrofit request
+     */
     public PrefUtils() {
     }
 

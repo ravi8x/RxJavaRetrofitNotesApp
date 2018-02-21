@@ -19,27 +19,26 @@ import retrofit2.http.Path;
  */
 
 public interface ApiService {
-
-    // register new user
+    // Register new user
     @FormUrlEncoded
     @POST("notes/user/register")
     Single<User> register(@Field("device_id") String deviceId);
 
-    // create note
+    // Create note
     @FormUrlEncoded
     @POST("notes/new")
     Single<Note> createNote(@Field("note") String note);
 
-    // fetch all notes
+    // Fetch all notes
     @GET("notes/all")
     Single<List<Note>> fetchAllNotes();
 
-    // update single note
+    // Update single note
     @FormUrlEncoded
     @PUT("notes/{id}")
     Completable updateNote(@Path("id") int noteId, @Field("note") String note);
 
-    // delete note
+    // Delete note
     @DELETE("notes/{id}")
     Completable deleteNote(@Path("id") int noteId);
 }

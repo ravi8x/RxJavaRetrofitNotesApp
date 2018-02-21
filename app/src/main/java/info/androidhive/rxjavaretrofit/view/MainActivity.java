@@ -16,6 +16,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.ArrayList;
@@ -50,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.recycler_view)
     RecyclerView recyclerView;
+
+    @BindView(R.id.txt_empty_notes_view)
+    TextView noNotesView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onLongClick(View view, int position) {
-                showNoteDialog(true, notesList.get(position), position);
+                showActionsDialog(position);
             }
         }));
 
@@ -189,7 +193,26 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void deleteNote(final int noteId) {
+    private void showActionsDialog(final int position) {
+        CharSequence colors[] = new CharSequence[]{"Edit", "Delete"};
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Choose option");
+        builder.setItems(colors, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                if (which == 0) {
+                    showNoteDialog(true, notesList.get(position), position);
+                } else {
+                    deleteNote(notesList.get(position).getId(), position);
+                }
+            }
+        });
+        builder.show();
+    }
+
+    private void deleteNote(final int noteId, final int position) {
+        Log.e(TAG, "deleteNote: " + noteId + ", " + position);
         disposable.add(
                 apiService.deleteNote(noteId)
                         .subscribeOn(Schedulers.io())
@@ -197,7 +220,14 @@ public class MainActivity extends AppCompatActivity {
                         .subscribeWith(new DisposableCompletableObserver() {
                             @Override
                             public void onComplete() {
-                                Log.e(TAG, "Note deleted! " + noteId);
+                                Log.d(TAG, "Note deleted! " + noteId);
+
+                                notesList.remove(position);
+                                mAdapter.notifyItemRemoved(position);
+
+                                Toast.makeText(MainActivity.this, "Note deleted!", Toast.LENGTH_SHORT).show();
+
+                                toggleEmptyNotes();
                             }
 
                             @Override
@@ -262,6 +292,8 @@ public class MainActivity extends AppCompatActivity {
                                 notesList.clear();
                                 notesList.addAll(notes);
                                 mAdapter.notifyDataSetChanged();
+
+                                toggleEmptyNotes();
                             }
 
                             @Override
@@ -270,6 +302,14 @@ public class MainActivity extends AppCompatActivity {
                             }
                         })
         );
+    }
+
+    private void toggleEmptyNotes() {
+        if (notesList.size() > 0) {
+            noNotesView.setVisibility(View.GONE);
+        } else {
+            noNotesView.setVisibility(View.VISIBLE);
+        }
     }
 
     private void createNote(String note) {
@@ -290,6 +330,8 @@ public class MainActivity extends AppCompatActivity {
                                 Log.d(TAG, "new note created: " + note.getId() + ", " + note.getNote() + ", " + note.getTimestamp());
                                 notesList.add(0, note);
                                 mAdapter.notifyDataSetChanged();
+
+                                toggleEmptyNotes();
                             }
 
                             @Override

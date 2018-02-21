@@ -21,6 +21,12 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.jakewharton.retrofit2.adapter.rxjava2.HttpException;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -68,7 +74,9 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setTitle(getString(R.string.activity_title_home));
         setSupportActionBar(toolbar);
+
 
         FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -381,16 +389,27 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * Showing a Snackbar with error message
+     * The error body will be in json format
+     * {"error": "Error message!"}
      */
     private void showError(Throwable e) {
-        Snackbar snackbar = Snackbar
-                .make(coordinatorLayout, "No internet connection!", Snackbar.LENGTH_LONG);
+        HttpException error = (HttpException) e;
+        try {
+            String errorBody = error.response().errorBody().string();
+            JSONObject jObj = new JSONObject(errorBody);
 
-        // Changing action button text color
-        View sbView = snackbar.getView();
-        TextView textView = (TextView) sbView.findViewById(android.support.design.R.id.snackbar_text);
-        textView.setTextColor(Color.RED);
-        snackbar.show();
+            Snackbar snackbar = Snackbar
+                    .make(coordinatorLayout, jObj.getString("error"), Snackbar.LENGTH_LONG);
+
+            View sbView = snackbar.getView();
+            TextView textView = sbView.findViewById(android.support.design.R.id.snackbar_text);
+            textView.setTextColor(Color.YELLOW);
+            snackbar.show();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        } catch (JSONException e1) {
+            e1.printStackTrace();
+        }
     }
 
     private void whiteNotificationBar(View view) {

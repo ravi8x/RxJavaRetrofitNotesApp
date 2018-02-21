@@ -2,10 +2,12 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:paddingLeft="@dimen/activity_margin"
-    android:paddingTop="10dp"
     android:paddingBottom="10dp"
-    android:paddingRight="@dimen/activity_margin">
+    android:paddingLeft="@dimen/activity_margin"
+    android:paddingRight="@dimen/activity_margin"
+    android:clickable="true"
+    android:foreground="?attr/selectableItemBackground"
+    android:paddingTop="10dp">
 
     <TextView
         android:id="@+id/dot"
@@ -22,7 +24,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_toRightOf="@id/dot"
-        android:text="22 Dec"
         android:textColor="#858585"
         android:textSize="14sp" />
 

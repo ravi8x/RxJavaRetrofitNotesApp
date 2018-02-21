@@ -1,11 +1,11 @@
 package info.androidhive.rxjavaretrofit.view;
 
-import android.content.Intent;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -13,12 +13,16 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.widget.EditText;
+import android.widget.Toast;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.UUID;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -29,8 +33,10 @@ import info.androidhive.rxjavaretrofit.network.model.Note;
 import info.androidhive.rxjavaretrofit.network.model.User;
 import info.androidhive.rxjavaretrofit.utils.MyDividerItemDecoration;
 import info.androidhive.rxjavaretrofit.utils.PrefUtils;
+import info.androidhive.rxjavaretrofit.utils.RecyclerTouchListener;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.functions.Function;
 import io.reactivex.observers.DisposableCompletableObserver;
 import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
@@ -59,12 +65,14 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                startActivity(new Intent(MainActivity.this, NewNoteActivity.class));
+                showNoteDialog(false, null, -1);
             }
         });
 
         // white background notification bar
         whiteNotificationBar(fab);
+
+        apiService = ApiClient.getClient(getApplicationContext()).create(ApiService.class);
 
         mAdapter = new NotesAdapter(this, notesList);
         RecyclerView.LayoutManager mLayoutManager = new LinearLayoutManager(getApplicationContext());
@@ -73,26 +81,112 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.addItemDecoration(new MyDividerItemDecoration(this, LinearLayoutManager.VERTICAL, 16));
         recyclerView.setAdapter(mAdapter);
 
-        apiService = ApiClient.getClient(getApplicationContext()).create(ApiService.class);
+        // long press
+        recyclerView.addOnItemTouchListener(new RecyclerTouchListener(this,
+                recyclerView, new RecyclerTouchListener.ClickListener() {
+            @Override
+            public void onClick(View view, final int position) {
+            }
 
+            @Override
+            public void onLongClick(View view, int position) {
+                showNoteDialog(true, notesList.get(position), position);
+            }
+        }));
 
+        /**
+         * Check for stored Api Key in shared preferences
+         * If not present, make api call to register the user
+         * */
         if (TextUtils.isEmpty(PrefUtils.getApiKey(this))) {
-            testApi();
+            registerUser();
+        } else {
+            // user is already registered, fetch all notes
+            fetchAllNotes();
         }
+    }
 
-//        createNote("Call brother!");
-//        createNote("Complete RxJava series");
-//        createNote("Buy milk today");
-//        createNote("Bank Details: HDFC Bank, Acc: 2018382990003, IFSC Code: HDFC23920");
-//        createNote("Watch Black Panther!");
-//        createNote("My email: ravi8x@gmail.com");
-//        createNote("Imsai Arasan 23am Pulikesi!");
+    /**
+     * Registering new user
+     * sending unique id as device identification
+     * https://developer.android.com/training/articles/user-data-ids.html
+     */
+    private void registerUser() {
+        // unique id to identify the device
+        String uniqueId = UUID.randomUUID().toString();
 
-        fetchAllNotes();
+        disposable.add(
+                apiService
+                        .register(uniqueId)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribeWith(new DisposableSingleObserver<User>() {
+                            @Override
+                            public void onSuccess(User user) {
+                                // Storing user API Key in preferences
+                                PrefUtils.storeApiKey(getApplicationContext(), user.getApiKey());
 
-        updateNote(24, "Note updated from device!");
+                                Toast.makeText(getApplicationContext(),
+                                        "Device is registered successfully! Api key: " + PrefUtils.getApiKey(getApplicationContext()),
+                                        Toast.LENGTH_LONG).show();
+                            }
 
-        deleteNote(26);
+                            @Override
+                            public void onError(Throwable e) {
+                                // TODO - handle error
+                            }
+                        }));
+    }
+
+    private void showNoteDialog(final boolean shouldUpdate, final Note note, final int position) {
+        LayoutInflater layoutInflaterAndroid = LayoutInflater.from(getApplicationContext());
+        View view = layoutInflaterAndroid.inflate(R.layout.note_dialog, null);
+
+        AlertDialog.Builder alertDialogBuilderUserInput = new AlertDialog.Builder(MainActivity.this);
+        alertDialogBuilderUserInput.setView(view);
+
+        final EditText inputNote = view.findViewById(R.id.note);
+
+        if (shouldUpdate && note != null) {
+            inputNote.setText(note.getNote());
+        }
+        alertDialogBuilderUserInput
+                .setCancelable(false)
+                .setPositiveButton(shouldUpdate ? "update" : "save", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialogBox, int id) {
+
+                    }
+                })
+                .setNegativeButton("cancel",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialogBox, int id) {
+                                dialogBox.cancel();
+                            }
+                        });
+
+        final AlertDialog alertDialog = alertDialogBuilderUserInput.create();
+        alertDialog.show();
+
+        alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (TextUtils.isEmpty(inputNote.getText().toString())) {
+                    Toast.makeText(MainActivity.this, "Enter note!", Toast.LENGTH_SHORT).show();
+                    return;
+                } else {
+                    alertDialog.dismiss();
+                }
+
+                // check if user updating note
+                if (shouldUpdate && note != null) {
+                    // update note by it's id
+                    updateNote(note.getId(), inputNote.getText().toString(), position);
+                } else {
+                    // create new note
+                    createNote(inputNote.getText().toString());
+                }
+            }
+        });
     }
 
     private void deleteNote(final int noteId) {
@@ -114,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
         );
     }
 
-    private void updateNote(int noteId, String note) {
+    private void updateNote(int noteId, final String note, final int position) {
         disposable.add(
                 apiService.updateNote(noteId, note)
                         .subscribeOn(Schedulers.io())
@@ -122,7 +216,13 @@ public class MainActivity extends AppCompatActivity {
                         .subscribeWith(new DisposableCompletableObserver() {
                             @Override
                             public void onComplete() {
-                                Log.e(TAG, "Note updated!");
+                                Log.d(TAG, "Note updated!");
+
+                                Note n = notesList.get(position);
+                                n.setNote(note);
+
+                                notesList.set(position, n);
+                                mAdapter.notifyItemChanged(position);
                             }
 
                             @Override
@@ -137,6 +237,19 @@ public class MainActivity extends AppCompatActivity {
                 apiService.fetchAllNotes()
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
+                        .map(new Function<List<Note>, List<Note>>() {
+                            @Override
+                            public List<Note> apply(List<Note> notes) throws Exception {
+                                // TODO - note about sort
+                                Collections.sort(notes, new Comparator<Note>() {
+                                    @Override
+                                    public int compare(Note n1, Note n2) {
+                                        return n2.getId() - n1.getId();
+                                    }
+                                });
+                                return notes;
+                            }
+                        })
                         .subscribeWith(new DisposableSingleObserver<List<Note>>() {
                             @Override
                             public void onSuccess(List<Note> notes) {
@@ -160,6 +273,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void createNote(String note) {
+        Log.e(TAG, "createNote: " + note);
         disposable.add(
                 apiService.createNote(note)
                         .subscribeOn(Schedulers.io())
@@ -168,59 +282,21 @@ public class MainActivity extends AppCompatActivity {
 
                             @Override
                             public void onSuccess(Note note) {
-                                Log.e(TAG, "new note created: " + note.getId() + ", " + note.getNote() + ", " + note.getTimestamp());
+                                if (!TextUtils.isEmpty(note.getError())) {
+                                    Toast.makeText(getApplicationContext(), note.getError(), Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+
+                                Log.d(TAG, "new note created: " + note.getId() + ", " + note.getNote() + ", " + note.getTimestamp());
+                                notesList.add(0, note);
+                                mAdapter.notifyDataSetChanged();
                             }
 
                             @Override
                             public void onError(Throwable e) {
-
+                                Log.e(TAG, "onError: " + e.getMessage());
                             }
                         }));
-    }
-
-    private void testApi() {
-        // register user
-        disposable.add(
-                apiService
-                        .register("genymotion")
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .subscribeWith(new DisposableSingleObserver<User>() {
-                            @Override
-                            public void onSuccess(User user) {
-                                PrefUtils.storeApiKey(getApplicationContext(), user.getApiKey());
-
-                                Log.e(TAG, "ApiKey: " + PrefUtils.getApiKey(getApplicationContext()));
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-
-                            }
-                        }));
-
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
     }
 
     private void whiteNotificationBar(View view) {
@@ -230,5 +306,11 @@ public class MainActivity extends AppCompatActivity {
             view.setSystemUiVisibility(flags);
             getWindow().setStatusBarColor(Color.WHITE);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        disposable.dispose();
     }
 }

@@ -156,7 +156,8 @@ public class MainActivity extends AppCompatActivity {
 
                             @Override
                             public void onError(Throwable e) {
-                                // TODO - handle error
+                                Log.e(TAG, "onError: " + e.getMessage());
+                                showError(e);
                             }
                         }));
     }
@@ -224,7 +225,7 @@ public class MainActivity extends AppCompatActivity {
 
                                 // Add new item and notify adapter
                                 notesList.add(0, note);
-                                mAdapter.notifyDataSetChanged();
+                                mAdapter.notifyItemInserted(0);
 
                                 toggleEmptyNotes();
                             }
@@ -312,6 +313,8 @@ public class MainActivity extends AppCompatActivity {
         alertDialogBuilderUserInput.setView(view);
 
         final EditText inputNote = view.findViewById(R.id.note);
+        TextView dialogTitle = view.findViewById(R.id.dialog_title);
+        dialogTitle.setText(!shouldUpdate ? getString(R.string.lbl_new_note_title) : getString(R.string.lbl_edit_note_title));
 
         if (shouldUpdate && note != null) {
             inputNote.setText(note.getNote());
@@ -393,23 +396,36 @@ public class MainActivity extends AppCompatActivity {
      * {"error": "Error message!"}
      */
     private void showError(Throwable e) {
-        HttpException error = (HttpException) e;
+        String message = "";
         try {
-            String errorBody = error.response().errorBody().string();
-            JSONObject jObj = new JSONObject(errorBody);
+            if (e instanceof IOException) {
+                message = "No internet connection!";
+            } else if (e instanceof HttpException) {
+                HttpException error = (HttpException) e;
+                String errorBody = error.response().errorBody().string();
+                JSONObject jObj = new JSONObject(errorBody);
 
-            Snackbar snackbar = Snackbar
-                    .make(coordinatorLayout, jObj.getString("error"), Snackbar.LENGTH_LONG);
-
-            View sbView = snackbar.getView();
-            TextView textView = sbView.findViewById(android.support.design.R.id.snackbar_text);
-            textView.setTextColor(Color.YELLOW);
-            snackbar.show();
+                message = jObj.getString("error");
+            }
         } catch (IOException e1) {
             e1.printStackTrace();
         } catch (JSONException e1) {
             e1.printStackTrace();
+        } catch (Exception e1) {
+            e1.printStackTrace();
         }
+
+        if (TextUtils.isEmpty(message)) {
+            message = "Unknown error occurred! Check LogCat.";
+        }
+
+        Snackbar snackbar = Snackbar
+                .make(coordinatorLayout, message, Snackbar.LENGTH_LONG);
+
+        View sbView = snackbar.getView();
+        TextView textView = sbView.findViewById(android.support.design.R.id.snackbar_text);
+        textView.setTextColor(Color.YELLOW);
+        snackbar.show();
     }
 
     private void whiteNotificationBar(View view) {

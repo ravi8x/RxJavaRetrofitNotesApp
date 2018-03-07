@@ -7,7 +7,7 @@
     android:paddingRight="@dimen/activity_margin"
     android:paddingTop="@dimen/activity_margin">
 
-    <TextView
+    <TextView android:id="@+id/dialog_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/dimen_10"
